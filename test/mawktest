@@ -1,0 +1,69 @@
+#!/bin/sh
+
+# This is a simple test that a new made mawk seems to
+# be working OK.
+# It's certainly not exhaustive, but the last two tests in 
+# particular use most features.
+#
+#  mawk needs to be in .. or $PATH
+
+dat=mawktest.dat
+
+trap 'echo mawk_test failed ; rm -f temp$$ ; exit 1'  0
+
+PATH=..:$PATH
+
+# find out which mawk we're testing
+mawk -W version
+
+
+#################################
+echo
+echo testing input and field splitting
+
+mawk -f wc.awk $dat |  diff - wc-awk.out || exit
+
+echo input and field splitting OK
+#####################################
+
+echo
+echo testing regular expression matching
+mawk -f reg0.awk $dat > temp$$
+mawk -f reg1.awk $dat >> temp$$
+mawk -f reg2.awk $dat >> temp$$
+
+diff  reg-awk.out temp$$ || exit
+
+echo regular expression matching OK
+#######################################
+
+echo
+echo testing arrays and flow of control
+
+mawk -f wfrq0.awk $dat | diff - wfrq-awk.out || exit
+
+echo array test OK
+#################################
+
+echo
+echo testing input/output with pipes
+AWK=mawk pipetest | diff - pipetest.out
+
+echo pipe IO OK
+
+###################
+
+echo
+echo testing function calls and general stress test
+
+mawk -f ../examples/decl.awk $dat | diff - decl-awk.out || exit 
+
+echo general stress test passed
+
+
+echo
+echo  tested mawk seems OK
+
+trap 0
+rm -f temp$$
+exit 0

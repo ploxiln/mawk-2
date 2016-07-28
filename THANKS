@@ -1,0 +1,11 @@
+I appreciate the help from:
+
+Arnold Robbins advised me on new features such as length(array) and
+changing environment such as strtod() behavior. Most important
+he encouraged me to make a new mawk release.  He also introduced
+me to Nelson H.F. Beebe.
+
+Nelson tested mawk on about 90 machines. He modernized the code so
+it could be compiled with different C and C++ compilers. He did
+the autoconf setup so the build could be controlled by configure.
+The details are in ChangeLog.beebe.

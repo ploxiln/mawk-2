@@ -1,0 +1,262 @@
+
+/********************************************
+hash.c
+copyright 1991,2014-2016 Michael D. Brennan
+
+This is a source file for mawk, an implementation of
+the AWK programming language.
+
+Mawk is distributed without warranty under the terms of
+the GNU General Public License, version 3, 2007.
+
+If you import elements of this code into another product,
+you agree to not name that product mawk.
+********************************************/
+
+
+/* hash.c */
+
+#include "mawk.h"
+#include "memory.h"
+#include "symtype.h"
+
+/*
+ * FNV-1a hash function
+ * http://www.isthe.com/chongo/tech/comp/fnv/index.html
+ */
+unsigned
+hash(const char *s)
+{
+    /* FNV-1a */
+    register unsigned h = 2166136261U;
+
+    while (*s) {
+	h ^= (unsigned char) (*s++);
+	h *= 16777619U;
+    }
+    return h;
+}
+
+unsigned
+hash2(const char *s, size_t len)
+{
+    /* FNV-1a */
+    register unsigned h = 2166136261U;
+
+    while (len > 0) {
+	h ^= (unsigned char) (*s++);
+	h *= 16777619U;
+	len-- ;
+    }
+    return h;
+}
+
+typedef struct hash
+{
+   struct hash *link ;
+   SYMTAB symtab ;
+} HASHNODE ;
+
+#if defined(__cplusplus)
+#define delete delete_
+#endif
+
+static HASHNODE *delete(const char *) ;
+
+static HASHNODE *hash_table[HASH_PRIME] ;
+
+/*
+insert a string in the symbol table.
+Caller knows the symbol is not there
+-- used for initialization
+*/
+
+SYMTAB *
+insert(const char* s)
+{
+   register HASHNODE *p = ZMALLOC(HASHNODE) ;
+   register unsigned h ;
+
+   p->link = hash_table[h = hash(s) % HASH_PRIME] ;
+   p->symtab.name = s ;
+   hash_table[h] = p ;
+   return &p->symtab ;
+}
+
+/* Find s in the symbol table,
+   if not there insert it,  s must be dup'ed  */
+
+SYMTAB *
+find(const char* s)
+{
+   register HASHNODE *p ;
+   HASHNODE *q ;
+   unsigned h ;
+
+   p = hash_table[h = hash(s) % HASH_PRIME] ;
+   q = (HASHNODE *) 0 ;
+   while (1)
+   {
+      if (!p)
+      {
+	 p = ZMALLOC(HASHNODE) ;
+	 p->symtab.type = ST_NONE ;
+	 p->symtab.name = strcpy((char *)zmalloc(strlen(s) + 1), s) ;
+	 break ;
+      }
+
+      if (strcmp(p->symtab.name, s) == 0)	/* found */
+      {
+	 if (!q)		/* already at the front */
+	    return &p->symtab ;
+	 else  /* delete from the list */
+	 {
+	    q->link = p->link ;	 break ;
+	 }
+      }
+
+      q = p ; p = p->link ;
+   }
+   /* put p on front of the list */
+   p->link = hash_table[h] ;
+   hash_table[h] = p ;
+   return &p->symtab ;
+}
+
+
+/* remove a node from the hash table
+   return a ptr to the node */
+
+static unsigned last_hash ;
+
+static HASHNODE *
+delete(const char* s)
+{
+   register HASHNODE *p ;
+   HASHNODE *q = (HASHNODE *) 0 ;
+   unsigned h ;
+
+   p = hash_table[last_hash = h = hash(s) % HASH_PRIME] ;
+   while (p)
+   {
+      if (strcmp(p->symtab.name, s) == 0)	/* found */
+      {
+	 if (q)	 q->link = p->link ;
+	 else  hash_table[h] = p->link ;
+	 return p ;
+      }
+      else
+      {
+	 q = p ; p = p->link ;
+      }
+   }
+
+#ifdef	DEBUG			/* we should not ever get here */
+   bozo("delete") ;
+#endif
+   return (HASHNODE *) 0 ;
+}
+
+/* when processing user functions,  global ids which are
+   replaced by local ids are saved on this list */
+
+static HASHNODE *save_list ;
+
+/* store a global id on the save list,
+   return a ptr to the local symtab  */
+SYMTAB *
+save_id(const char* s)
+{
+   HASHNODE *p, *q ;
+   unsigned h ;
+
+   p = delete(s) ;
+   q = ZMALLOC(HASHNODE) ;
+   q->symtab.type = ST_LOCAL_NONE ;
+   q->symtab.name = p->symtab.name ;
+   /* put q in the hash table */
+   q->link = hash_table[h = last_hash] ;
+   hash_table[h] = q ;
+
+   /* save p */
+   p->link = save_list ; save_list = p ;
+
+   return &q->symtab ;
+}
+
+/* restore all global indentifiers */
+void
+restore_ids(void)
+{
+   register HASHNODE *p, *q ;
+   register unsigned h ;
+
+   q = save_list ; save_list = (HASHNODE *) 0 ;
+   while (q)
+   {
+      p = q ; q = q->link ;
+      zfree(delete(p->symtab.name), sizeof(HASHNODE)) ;
+      p->link = hash_table[h = last_hash] ;
+      hash_table[h] = p ;
+   }
+}
+
+
+/* search the symbol table backwards for the
+   disassembler.  This is slow -- so what
+*/
+
+const char *
+reverse_find(int type, void*  ptr)
+{
+   CELL *cp = 0 ;
+   ARRAY array = 0 ;
+   const char* const uk = "unknown" ;
+
+   int i ;
+   HASHNODE *p ;
+
+
+   switch (type)
+   {
+      case ST_VAR:
+      case ST_FIELD:
+	 cp = *(CELL **) ptr ;
+	 break ;
+
+      case ST_ARRAY:
+	 array = *(ARRAY *) ptr ;
+	 break ;
+
+      default:
+	 return uk ;
+   }
+
+   for (i = 0; i < HASH_PRIME; i++)
+   {
+      p = hash_table[i] ;
+      while (p)
+      {
+	 if (p->symtab.type == type)
+	 {
+	    switch (type)
+	    {
+	       case ST_VAR:
+	       case ST_FIELD:
+		  if (cp == p->symtab.stval.cp)
+		     return p->symtab.name ;
+		  break ;
+
+	       case ST_ARRAY:
+		  if (array == p->symtab.stval.array)
+		     return p->symtab.name ;
+		  break ;
+	    }
+	 }
+
+	 p = p->link ;
+      }
+   }
+   return uk ;
+}
+

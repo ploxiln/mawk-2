@@ -1,0 +1,29 @@
+#!/bin/sh
+
+AWK=${AWK:-../mawk}
+
+# pipes and out files and new printf and system
+
+echo '3
+2
+1' |  $AWK 'BEGIN {
+            input = "cat; exit 7"
+	    output = "sort"
+
+	    while((input | getline > 0)) {
+	        print | output
+	    }
+	    print close(input), close(output)
+}'
+
+$AWK 'BEGIN {  
+    file = "foo" rand()
+    printf "%x %x %d\n", -1, 2^32, -2^32 > file
+    print close(file)
+    command = sprintf("cat %s; rm %s; exit 4", file, file)
+    print system(command)
+}'
+
+
+
+

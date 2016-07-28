@@ -1,0 +1,9 @@
+
+$ ./configure
+$ ./make
+$ ./make check
+
+This gives you an executable mawk.
+You can copy it to a bin directory or make install to /usr/local/bin
+
+Report builld problems to Mike Brennan <mawkeddy@gmail.com>

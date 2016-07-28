@@ -1,0 +1,213 @@
+### ====================================================================
+### This section gets transformed by the configure script into Makefile
+
+prefix		= @prefix@
+BINDIR		= $(prefix)/bin
+CC		= @CC@
+CFLAGS		= @CFLAGS@
+CPP		= @CPP@
+MANDIR		= $(prefix)/man/man$(MANEXT)
+MANEXT		= 1
+LIBS		= @LIBS@
+SHELL		= /bin/sh
+YACC		= @YACC@
+
+### ====================================================================
+### The remainder of this file is copied verbatim into Makefile
+
+### Some systems and libraries print -nan, while others print nan or
+### NaN: the sign of NaN is undefined, so this filter eliminates that
+### difference.  Similarly, the lettercase of Inf may vary.  On SGI
+### IRIX, NaN prints as nan0x10000000, so we also have to filter out
+### the payload
+
+FPE_FILTER	= sed						\
+		-e 's/[Nn][Aa][Nn]/nan/'			\
+		-e 's/-nan/nan/'				\
+		-e 's/nan0x[0-9a-fA-Z][0-9a-fA-Z]*/nan/'	\
+		-e 's/[Ii][Nn][Ff]/inf/'			\
+		-e 's/[Ii][Nn][Ff][Ii][Nn][Ii][Yy]/inf/'
+
+O               = array.o bi_funct.o bi_vars.o cast.o code.o da.o error.o \
+		  execute.o fcall.o field.o files.o fin.o hash.o init.o int.o \
+		  jmp.o kw.o main.o memory.o parse.o print.o \
+		  printf.o re_cmpl.o scan.o scancode.o split.o version.o \
+		  zmalloc.o
+
+REXP_O		= $(REXP_C:.c=.o)
+
+REXP_C          = rexp/rexp.c rexp/rexp0.c rexp/rexp1.c rexp/rexp2.c \
+		  rexp/rexp3.c rexp/rexpdb.c rexp/wait.c
+
+STATUS		= check.status
+
+EXCLUDEFLAGS	= --exclude=$$$$b/Makefile	\
+		  --exclude=RCS			\
+		  --exclude=autom4te.cache	\
+		  --exclude=config.h		\
+		  --exclude=config.log		\
+		  --exclude=config.status	\
+		  --exclude='*~'
+
+### ====================================================================
+
+.SUFFIXES:	.i
+
+.c.i:
+	$(CPP) $(CFLAGS) $< > $*.i
+
+### ====================================================================
+
+
+all : mkrexp mawk
+
+check:	check_begin mawk_test check_end
+
+check_begin:
+	-@rm -f $(STATUS)
+
+check_end:
+	@echo ;									\
+	npass=`grep -c '^PASS' $(STATUS) || true` ;				\
+	nfail=`grep -c '^FAIL' $(STATUS) || true` ;				\
+	test $$npass -eq 2 && echo SUCCESS: ALL $$npass TESTS PASSED ||	\
+	( cat $(STATUS) ; echo ; echo FAILURE: $$nfail of `expr $$npass + $$nfail` tests failed )
+	@for f in mawktest.err mawktest.out ;							\
+	do														\
+		cmp -s test/okay/$$f test/$$f || (echo ; echo Differences in $$f ; diff test/okay/$$f test/$$f ) ;	\
+	done
+
+mawk : $(O)  $(REXP_O)
+	$(CC) $(CFLAGS) -o mawk $(O) $(REXP_O) $(LIBS)
+
+mkrexp :
+	cd rexp ;\
+	$(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS) -DMAWK -I.."
+
+
+mawk_test :  mawk  # test that we have a sane mawk
+	@echo ; echo testing mawk
+	-cd test ; ./mawktest > mawktest.out 2> mawktest.err
+	@( cmp -s test/okay/mawktest.err test/mawktest.err && echo PASS: mawktest.err || echo FAIL: mawktest.err ) >> $(STATUS)
+	@( cmp -s test/okay/mawktest.out test/mawktest.out && echo PASS: mawktest.out || echo FAIL: mawktest.out ) >> $(STATUS)
+
+fpe_test :  mawk # test FPEs are handled OK
+	@echo ; echo testing floating point exception handling
+	-cd test ; ./fpe_test 
+
+$(REXP_O) :
+	cd rexp ;\
+	$(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS) -DMAWK -I.."
+
+parse.c  parse.h : parse.y
+	@echo  expect 6 shift/reduce conflicts
+	$(YACC) -d parse.y
+	mv y.tab.c parse.c
+	mv y.tab.h parse.h
+
+array.c : array.w
+	notangle -R'"array.c"' array.w | cpif array.c
+
+array.h : array.w
+	notangle -R'"array.h"' array.w | cpif array.h
+
+printf.c : printf.w
+	notangle -R'"printf.c"' printf.w | cpif printf.c
+
+printf.h : printf.w
+	notangle -R'"printf.h"' printf.w | cpif printf.h
+
+scancode.c :  makescan.c  scan.h
+	$(CC) -o makescan.exe  makescan.c
+	rm -f scancode.c
+	./makescan.exe > scancode.c
+	rm makescan.exe
+
+MAWKMAN = $(MANDIR)/mawk.$(MANEXT)
+install :  mawk
+	cp mawk $(BINDIR)
+	chmod  0755  $(BINDIR)/mawk
+	cp  man/mawk.1  $(MAWKMAN)
+	chmod  0644  $(MAWKMAN)
+
+clean :
+	-rm -f *.i *.o rexp/*.o test/mawk mawk $(STATUS)
+
+dist :
+	-d=`pwd` ;											\
+	b=`basename $$d` ;										\
+	$(MAKE) clean ;											\
+	(cd ..; env GZIP=-9  tar -c -z ${EXCLUDEFLAGS} -f $$b.tar.gz  $$b 2> /dev/null || true) ;	\
+	(cd ..; env BZIP2=-9 tar -c -j ${EXCLUDEFLAGS} -f $$b.tar.bz2 $$b 2> /dev/null || true) ;	\
+	(cd ..; env XZ=-9    tar -c -J ${EXCLUDEFLAGS} -f $$b.tar.xz  $$b 2> /dev/null || true) ;	\
+	ls -l ../$$b.tar.*
+
+distclean :  clean
+	-rm -f config.h Makefile \
+	    config.status config.user config.log config.cache
+	-rm -rf autom4te.cache
+
+configure config.hin : configure.ac
+	autoconf
+	autoheader
+
+doc :
+	cd cdoc ; $(MAKE)
+
+
+### ====================================================================
+
+# dependencies computed by compiling with -MMD and makedeps  *.d
+array.o: array.c mawk.h types.h sizes.h int.h symtype.h array.h memory.h \
+ zmalloc.h split.h field.h bi_vars.h
+bi_funct.o: bi_funct.c mawk.h types.h sizes.h bi_funct.h symtype.h \
+ array.h bi_vars.h memory.h zmalloc.h init.h int.h files.h fin.h field.h \
+ regexp.h repl.h
+bi_vars.o: bi_vars.c mawk.h types.h sizes.h symtype.h array.h bi_vars.h \
+ field.h init.h memory.h zmalloc.h
+cast.o: cast.c mawk.h types.h sizes.h field.h memory.h zmalloc.h scan.h \
+ symtype.h array.h parse.h repl.h int.h
+code.o: code.c mawk.h types.h sizes.h code.h memory.h zmalloc.h init.h \
+ symtype.h array.h jmp.h field.h
+da.o: da.c mawk.h types.h sizes.h code.h memory.h zmalloc.h bi_funct.h \
+ symtype.h array.h repl.h field.h printf.h files.h
+error.o: error.c mawk.h types.h sizes.h scan.h symtype.h array.h parse.h \
+ bi_vars.h
+execute.o: execute.c mawk.h types.h sizes.h code.h memory.h zmalloc.h \
+ symtype.h array.h int.h field.h bi_funct.h bi_vars.h regexp.h repl.h \
+ fin.h
+fcall.o: fcall.c mawk.h types.h sizes.h symtype.h array.h code.h memory.h \
+ zmalloc.h
+field.o: field.c mawk.h types.h sizes.h int.h split.h field.h init.h \
+ symtype.h array.h memory.h zmalloc.h scan.h parse.h bi_vars.h repl.h \
+ regexp.h
+files.o: files.c mawk.h types.h sizes.h files.h memory.h zmalloc.h fin.h
+fin.o: fin.c mawk.h types.h sizes.h fin.h memory.h zmalloc.h bi_vars.h \
+ field.h symtype.h array.h scan.h parse.h
+hash.o: hash.c mawk.h types.h sizes.h memory.h zmalloc.h symtype.h \
+ array.h
+init.o: init.c mawk.h types.h sizes.h code.h memory.h zmalloc.h symtype.h \
+ array.h init.h bi_vars.h field.h
+int.o: int.c int.h
+jmp.o: jmp.c mawk.h types.h sizes.h symtype.h array.h jmp.h code.h \
+ memory.h zmalloc.h init.h
+kw.o: kw.c mawk.h types.h sizes.h symtype.h array.h parse.h init.h
+main.o: main.c mawk.h types.h sizes.h init.h symtype.h array.h code.h \
+ memory.h zmalloc.h files.h
+memory.o: memory.c mawk.h types.h sizes.h memory.h zmalloc.h
+parse.o: parse.c mawk.h types.h sizes.h symtype.h array.h code.h memory.h \
+ zmalloc.h bi_funct.h bi_vars.h jmp.h field.h files.h printf.h
+print.o: print.c mawk.h types.h sizes.h bi_vars.h bi_funct.h symtype.h \
+ array.h memory.h zmalloc.h field.h scan.h parse.h files.h int.h printf.h
+printf.o: printf.c mawk.h types.h sizes.h scan.h symtype.h array.h \
+ parse.h printf.h memory.h zmalloc.h files.h int.h
+re_cmpl.o: re_cmpl.c mawk.h types.h sizes.h memory.h zmalloc.h scan.h \
+ symtype.h array.h parse.h regexp.h repl.h split.h
+scan.o: scan.c mawk.h types.h sizes.h scan.h symtype.h array.h parse.h \
+ memory.h zmalloc.h field.h init.h int.h fin.h repl.h code.h files.h
+scancode.o: scancode.c
+split.o: split.c mawk.h types.h sizes.h split.h symtype.h array.h \
+ bi_vars.h bi_funct.h memory.h zmalloc.h scan.h parse.h regexp.h repl.h \
+ field.h
+version.o: version.c mawk.h types.h sizes.h
+zmalloc.o: zmalloc.c mawk.h types.h sizes.h zmalloc.h
