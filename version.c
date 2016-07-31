@@ -17,8 +17,8 @@ you agree to not name that product mawk.
 #include "mawk.h"
 
 /* mawk 1.9 */
-static const char* PATCH_STRING = ".9.2" ;
-static const char* DATE_STRING  = "28 Jul 2016" ;
+static const char* PATCH_STRING = ".9.3" ;
+static const char* DATE_STRING  = "31 Jul 2016" ;
 
 static
 const char* const version_string =

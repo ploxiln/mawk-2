@@ -47,7 +47,7 @@ echo array test OK
 
 echo
 echo testing input/output with pipes
-AWK=mawk pipetest | diff - pipetest.out
+AWK=mawk ./pipetest | diff - pipetest.out
 
 echo pipe IO OK
 
