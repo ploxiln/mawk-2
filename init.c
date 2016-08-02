@@ -411,7 +411,7 @@ static const char* const help[] = {
 "",
 "\t-F value       sets the field separator, FS, to value.",
 "",
-"\t-f file        Program text is read from file instead of from the",
+"\t-f file        program text is read from file instead of from the",
 "\t               command line.  Multiple -f options are allowed.",
 "",
 "\t-v var=value   assigns value to program variable var.",
@@ -422,7 +422,7 @@ static const char* const help[] = {
 "implementation of AWK.  mawk-specific options are prefaced with -W.",
 "",
 "\t-W dump        writes an assembler-like listing of the internal",
-"\t               representation of the program to stdout and exit 0 (on",
+"\t               representation of the program to stdout and exits 0 (on",
 "\t               successful compilation).",
 "",
 "\t-W exec file   program text is read from file and this is the last",
@@ -440,8 +440,8 @@ static const char* const help[] = {
 "",
 "\t-W version     displays mawk version and exits 0.",
 "",
-"Just the first letter for each option is enough.  For example, ",
-"-Wv, -W v and --v are equivalent to -W version.",
+"Just the first letter for each option is enough.  For example, -Wv, -W v ",
+"and --v are equivalent to -W version or --version.",
 0 } ;
 
 static void

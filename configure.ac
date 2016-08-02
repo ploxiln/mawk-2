@@ -1,4 +1,4 @@
-AC_INIT(mawk, 1.9.9.3, mawkeddy@gmail.com)
+AC_INIT(mawk, 1.9.9.4, mawkeddy@gmail.com)
 
 dnl ==================================================================== 
 dnl Checks for compilers:
