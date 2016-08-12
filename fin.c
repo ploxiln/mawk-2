@@ -66,6 +66,7 @@ FINdopen(int fd, int main_flag)
 /* open a FIN* by filename.
    It's the main stream if main_flag is set.
    Recognizes "-" as stdin.
+   Recognizes "/dev/stdin" as stdin.
 */
 
 FIN *
@@ -79,7 +80,8 @@ FINopen(const char* filename, int main_flag)
    if (bm)  oflag |= O_BINARY ;
 #endif
 
-   if (filename[0] == '-' && filename[1] == 0)
+   if (filename[0] == '-' && filename[1] == 0 ||
+       strcmp(filename,"/dev/stdin") == 0 )
    {
 #if  MSDOS
       if (bm)  setmode(0, O_BINARY) ;
@@ -107,7 +109,12 @@ FINpopen(const char* command)
 
 
 /* frees the buffer and fd, but leaves FIN structure until
-   the user calls close() */
+   the user calls close() 
+
+   This only gets called from getline and FINclose
+
+   we don't really close stdin/0 so association to "-" always works
+*/
 
 void
 FINsemi_close(FIN* fin)
@@ -117,14 +124,23 @@ FINsemi_close(FIN* fin)
     if (fin->buff != &dead) {
         free(fin->buff) ;
 	fin->buff = &dead ;
+	/* belt and suspenders */
+	fin->start = fin->end = fin->buff ;
+	fin->flags = EOF_FLAG ;
+
+	fin->close_val = 0 ;
 
 	if (fin->fd == -1) {
-	    fin->close_val = fclose(fin->fp) ;
+	    if (fin->fp != stdin) {
+	        fin->close_val = fclose(fin->fp) ;
+	    }
 	}
 	else if (fin->fp) {
 	    fin->close_val = pclose(fin->fp) ;
 	}
-	else fin->close_val = close(fin->fd) ;
+	else if (fin->fd != 0) {
+	    fin->close_val = close(fin->fd) ;
+	}
     }
     /* else was already semi_closed */
 }

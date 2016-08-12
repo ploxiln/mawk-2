@@ -29,6 +29,7 @@ you agree to not name that product mawk.
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 
 #if defined(__cplusplus)
 #define THROW__ throw()
