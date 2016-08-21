@@ -91,8 +91,9 @@ void
 execute(
    INST *cdp ,		 /* code ptr, start execution here */
    register CELL *sp ,		 /* eval_stack pointer */
-   CELL *fp )			 /* frame ptr into eval_stack for
+   CELL *fp			 /* frame ptr into eval_stack for
 			            user defined functions */
+   )
 {
    /* some useful temporaries */
    CELL *cp ;
@@ -108,7 +109,6 @@ execute(
 #ifdef	DEBUG
    CELL *entry_sp = sp ;
 #endif
-
 
    if (fp)
    {

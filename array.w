@@ -2,7 +2,7 @@
 \input mwebmac
 \input ctmac
 
-\RCSID{$Id: array.w,v 1.6 2016/07/20 18:05:22 mike Exp $}
+\RCSID{$Id: array.w,v 1.7 2016/08/17 16:35:26 mike Exp $}
 
 \TOC{Mawk Arrays}
 
@@ -1040,6 +1040,7 @@ static STRING** itable_s_vector(ITable*) ;
 #define ARRAY_H 1
 
 #include "types.h"
+#include "int.h"
 
 <<array typedefs and [[#defines]]>>
 <<interface prototypes>>
@@ -1049,7 +1050,6 @@ static STRING** itable_s_vector(ITable*) ;
 /* array.c */
 <<blurb>>
 #include "mawk.h"
-#include "int.h"
 #include "symtype.h"
 #include "memory.h"
 #include "split.h"

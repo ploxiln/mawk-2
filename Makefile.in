@@ -70,7 +70,7 @@ check_end:
 	@echo ;									\
 	npass=`grep -c '^PASS' $(STATUS) || true` ;				\
 	nfail=`grep -c '^FAIL' $(STATUS) || true` ;				\
-	test $$npass -eq 2 && echo SUCCESS: ALL $$npass TESTS PASSED ||	\
+	test $$npass -eq 2 && echo SUCCESS: TEST PASSED ||	\
 	( cat $(STATUS) ; echo ; echo FAILURE: $$nfail of `expr $$npass + $$nfail` tests failed )
 	@for f in mawktest.err mawktest.out ;							\
 	do														\

@@ -23,6 +23,7 @@ It's easiest to read or modify this file by working with array.w.
 #define ARRAY_H 1
 
 #include "types.h"
+#include "int.h"
 
 typedef struct array {
    void* ptr ;  /* What this points to depends on the type */

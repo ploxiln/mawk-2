@@ -31,8 +31,6 @@ PTR   file_find(STRING *, int) ;
 int   file_close(STRING *) ;
 int   file_flush(STRING *) ;
 void  flush_all_output(void) ;
-PTR   get_pipe(const char *, int, int *) ;
-int   wait_for(int) ;
 int   close_all_output() ;
 
 void  write_error(FILE*) ;

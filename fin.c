@@ -80,7 +80,7 @@ FINopen(const char* filename, int main_flag)
    if (bm)  oflag |= O_BINARY ;
 #endif
 
-   if (filename[0] == '-' && filename[1] == 0 ||
+   if ((filename[0] == '-' && filename[1] == 0) ||
        strcmp(filename,"/dev/stdin") == 0 )
    {
 #if  MSDOS

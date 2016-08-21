@@ -20,7 +20,6 @@ It's easiest to read or modify this file by working with array.w.
 */
 
 #include "mawk.h"
-#include "int.h"
 #include "symtype.h"
 #include "memory.h"
 #include "split.h"
